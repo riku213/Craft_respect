@@ -1,0 +1,2 @@
+# Craft_respect
+Craft手法による古典籍くずし字の文字領域認識
