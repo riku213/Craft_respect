@@ -110,36 +110,58 @@ class PreTrainDataset(Dataset):
             data = json.load(f)
         print("jsonデータを読み込みました。")
         return data
-
+    
     def return_tensor_gt_optimized(self, gt_info_dic, image):
         """最適化された正解データ生成メソッド"""
         w, h = image.size
 
-        # スケーリング係数を計算
-        original_w, original_h = image.size
-        scale_factor = self.target_width / original_w
+        # スケールファクターを計算（元画像サイズが必要）
+        if 'original_size' in gt_info_dic:
+            orig_w, orig_h = gt_info_dic['original_size']
+            scale_factor_w = w / orig_w
+            scale_factor_h = h / orig_h
+        else:
+            scale_factor_w = 1.0
+            scale_factor_h = 1.0
 
-        # キャンバスサイズを計算（すでにリサイズ済みの画像サイズと同じ）
-        canvas_tensors = torch.zeros(4, h, w, dtype=torch.float32, device=self.device)
-
-        # 各チャネルを並列処理
+        # バッチ処理をより小さなチャンクに分割
+        chunk_size = 2  # チャンネルを2つずつ処理
         channel_names = ['main_region', 'main_affinity', 'furi_region', 'furi_affinity']
+        canvas_tensors = []
 
-        for i, channel_name in enumerate(channel_names):
-            if channel_name in gt_info_dic and gt_info_dic[channel_name]:
-                # 座標をスケーリング
-                scaled_points = []
-                for points in gt_info_dic[channel_name]:
-                    scaled_points.append([p * scale_factor for p in points])
+        for i in range(0, len(channel_names), chunk_size):
+            chunk_channels = channel_names[i:i+chunk_size]
+            chunk_tensor = torch.zeros(len(chunk_channels), h, w, 
+                                    dtype=torch.float32, device=self.device)
 
-                canvas_tensors[i] = self.design_gaussian_map_gpu(
-                    canvas_tensors[i],
-                    scaled_points,
-                    w, h
-                )
+            # チャンクごとに処理
+            for j, channel_name in enumerate(chunk_channels):
+                if channel_name in gt_info_dic and gt_info_dic[channel_name]:
+                    # 座標をスケーリング
+                    scaled_points = []
+                    for points in gt_info_dic[channel_name]:
+                        # points: [p1x, p1y, p2x, p2y, ...]
+                        scaled_points.append([
+                            points[k] * (scale_factor_w if k % 2 == 0 else scale_factor_h)
+                            for k in range(len(points))
+                        ])
 
-        # CPUに戻して返す
-        return canvas_tensors.cpu()
+                    canvas_tensor = self.design_gaussian_map_gpu(
+                        chunk_tensor[j] if chunk_tensor.shape[0] > j else chunk_tensor,
+                        scaled_points,
+                        w, h
+                    )
+                    chunk_tensor[j] = canvas_tensor
+
+            # 処理が終わったらすぐにCPUに転送
+            canvas_tensors.append(chunk_tensor.cpu())
+
+            # 明示的にGPUメモリを解放
+            del chunk_tensor
+            torch.cuda.empty_cache()
+
+        # 最後にすべてのテンソルを結合
+        return torch.cat(canvas_tensors, dim=0)
 
     def design_gaussian_map_gpu(self, canvas_tensor, point_list, width, height):
         """GPU上でガウス分布マップを生成"""
