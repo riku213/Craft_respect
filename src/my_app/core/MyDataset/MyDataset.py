@@ -18,7 +18,7 @@ class PreTrainDataset(Dataset):
                  input_path = '../kuzushiji-recognition/synthetic_images/input_images/',
                  json_path = '../kuzushiji-recognition/synthetic_images/gt_json.json',
                  transform = None,
-                 image_downsample_rate = 10,
+                 target_width = 400,  # 目標とする横幅
                  device = None,
                  precompute_gt = True,
                  num_workers = None):
@@ -26,7 +26,7 @@ class PreTrainDataset(Dataset):
         self.test_doc_id_list = test_doc_id_list
         self.input_path = input_path
         self.transform = transform
-        self.image_downsample_rate = image_downsample_rate
+        self.target_width = target_width
         
         # デバイス設定
         if device is None:
@@ -67,29 +67,24 @@ class PreTrainDataset(Dataset):
         image_id = self.input_imageID_list[index]
         image = Image.open(self.input_path + image_id + '.jpg')
         
+        # アスペクト比を保持したリサイズのための計算
+        original_w, original_h = image.size
+        aspect_ratio = original_h / original_w
+        new_w = self.target_width
+        new_h = int(self.target_width * aspect_ratio)
+        
+        # 画像をリサイズ
+        image = functional.resize(image, (new_h, new_w), interpolation=functional.InterpolationMode.BILINEAR)
+        
         # 事前計算されたデータがあれば使用
         if image_id in self.precomputed_gt:
             tensor_gt = self.precomputed_gt[image_id]
         else:
-            # リアルタイムで正解データを生成
+            # リアルタイムで正解データを生成（既に低解像度）
             tensor_gt = self.return_tensor_gt_optimized(
                 gt_info_dic=self.gt_json['files'][image_id], 
                 image=image
             )
-        
-        # 1. 元の画像のサイズを取得
-        original_w, original_h = image.size
-        # 2. ターゲットとなる新しいサイズを計算
-        new_size = (original_h // self.image_downsample_rate, original_w // self.image_downsample_rate)
-        
-        # 3. リサイズ処理
-        image = functional.resize(image, new_size, interpolation=functional.InterpolationMode.BILINEAR)
-        tensor_gt = F.interpolate(
-            tensor_gt.unsqueeze(0), 
-            size=new_size, 
-            mode='bilinear', 
-            align_corners=False
-        ).squeeze(0)
 
         if self.transform:
             image = self.transform(image)
@@ -119,22 +114,32 @@ class PreTrainDataset(Dataset):
     def return_tensor_gt_optimized(self, gt_info_dic, image):
         """最適化された正解データ生成メソッド"""
         w, h = image.size
-        
-        # GPUでテンソルを直接作成
+
+        # スケーリング係数を計算
+        original_w, original_h = image.size
+        scale_factor = self.target_width / original_w
+
+        # キャンバスサイズを計算（すでにリサイズ済みの画像サイズと同じ）
         canvas_tensors = torch.zeros(4, h, w, dtype=torch.float32, device=self.device)
-        
+
         # 各チャネルを並列処理
         channel_names = ['main_region', 'main_affinity', 'furi_region', 'furi_affinity']
-        
+
         for i, channel_name in enumerate(channel_names):
             if channel_name in gt_info_dic and gt_info_dic[channel_name]:
+                # 座標をスケーリング
+                scaled_points = []
+                for points in gt_info_dic[channel_name]:
+                    scaled_points.append([p * scale_factor for p in points])
+
                 canvas_tensors[i] = self.design_gaussian_map_gpu(
-                    canvas_tensors[i], 
-                    gt_info_dic[channel_name], 
+                    canvas_tensors[i],
+                    scaled_points,
                     w, h
                 )
-        
-        return canvas_tensors
+
+        # CPUに戻して返す
+        return canvas_tensors.cpu()
 
     def design_gaussian_map_gpu(self, canvas_tensor, point_list, width, height):
         """GPU上でガウス分布マップを生成"""
