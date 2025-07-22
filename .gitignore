@@ -3,6 +3,13 @@
 
 # Python cache files
 __pycache__/
+src/__pycache__/
+src/my_app/__pycache__/
+src/my_app/core/__pycache__/
+src/my_app/core/MyDataset/__pycache__/
+src/my_app/core/MyDataset/__pycache__/
+*/*/__pycache__  
+*/*/__pycache__/  
 *.py[cod]
 *$py.class
 
