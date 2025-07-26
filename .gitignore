@@ -1,6 +1,10 @@
 .checkpoints
 .image_data
 .vscode
+test/Yolo_trial/cache
+test/Yolo_trial/bus.jpg
+test/Yolo_trial/yolov8n.pt
+.test/
 
 # Python cache files
 __pycache__/
