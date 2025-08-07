@@ -80,7 +80,7 @@ class PreTrainDataset_old(Dataset):
         if self.transform:
             image = self.transform(image)
             
-        return image, tensor_gt
+        return image, tensor_gt, image_id
 
     def _precompute_ground_truth(self):
         """正解データを事前計算してキャッシュする"""
