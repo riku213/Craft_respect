@@ -5,6 +5,7 @@ test/Yolo_trial/cache
 test/Yolo_trial/bus.jpg
 test/Yolo_trial/yolov8n.pt
 .test/
+test/Yolo_trial/datasets
 
 # Python cache files
 __pycache__/
