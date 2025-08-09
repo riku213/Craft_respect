@@ -40,7 +40,9 @@ class PreTrainDataset_old(Dataset):
                     self.input_imageID_list.append(file_name.split('.')[0])
         
         # アノテーションデータを保持するjsonファイルをロード
+        print(f'before loadGT {len(self.input_imageID_list)}')
         self.gt_json = self.load_GT_json(json_path)
+        print(f'after loadGT {len(self.input_imageID_list)}')
         
         # 事前計算を実行
         if self.precompute_gt:

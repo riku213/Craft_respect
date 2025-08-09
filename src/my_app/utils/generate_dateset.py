@@ -885,7 +885,7 @@ IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images/input_images/'
 GROUND_TRUTH_IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images/ground_truth_images/'
 GT_JSON_PATH = '../kuzushiji-recognition/synthetic_images/gt_json.json'
 CSV_PATH = '../kuzushiji-recognition/synthetic_images/pre_training_color_annotations.csv'
-CSV_FURI_PATH = '../kuzushiji-recognition/synthetic_images/pre_training_color_furi_annotations.csv' 
+CSV_FURI_PATH = '../kuzushiji-recognition/synthetic_images/pre_training_color_furi_annotations.csv'
 testdata_doc_id = []
 if __name__ == "__main__":
     from multiprocessing import freeze_support
@@ -909,7 +909,7 @@ if __name__ == "__main__":
                             futures.append(executor.submit(
                                 main_exe_for_one_image, 
                                 file_path=file_path,
-                                json_gt = json_gt,
+                                json_gt=json_gt,
                                 procedure_for_one_image=procedure_for_one_image
                             ))
                             # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
