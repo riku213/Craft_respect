@@ -9,6 +9,7 @@ import json
 from multiprocessing import Manager
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import tqdm
+from tqdm.auto import tqdm
 import sys
 
 
@@ -54,21 +55,21 @@ def judge_brightness_and_return_image(file_path):
         return image
     
 # メインで実行する関数のフォーマット確認
-def main_exe_for_one_image(file_path, procedure_for_one_image=None):
-    image = judge_brightness_and_return_image(file_path)
-    if image is None:
-        print(f"Skipping {file_path.split('/')[-1]} due to brightness.")
-        return None
-    else:
-        procedure_for_one_image(image,file_path)
-def main_exe(procedure_for_one_image = None, testdata_doc_id = []):
-    doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
-    for doc_path in doc_path_list:
-        file_path_list = return_file_path_list(doc_path)
-        for file_path in file_path_list:
-            if procedure_for_one_image != None:
-                # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
-                main_exe_for_one_image(file_path=file_path, procedure_for_one_image=procedure_for_one_image)
+# def main_exe_for_one_image(file_path, procedure_for_one_image=None):
+#     image = judge_brightness_and_return_image(file_path)
+#     if image is None:
+#         print(f"Skipping {file_path.split('/')[-1]} due to brightness.")
+#         return None
+#     else:
+#         procedure_for_one_image(image,file_path)
+# def main_exe(procedure_for_one_image = None, testdata_doc_id = []):
+#     doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
+#     for doc_path in doc_path_list:
+#         file_path_list = return_file_path_list(doc_path)
+#         for file_path in file_path_list:
+#             if procedure_for_one_image != None:
+#                 # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
+#                 main_exe_for_one_image(file_path=file_path, procedure_for_one_image=procedure_for_one_image)
 
 # 指定した画像を白紙に戻す
 def remove_ink(image: np.ndarray, show_flag=False, inpaint_radius=20) -> np.ndarray:
@@ -270,9 +271,24 @@ def update_csv_one_doc(data,
         selected_path = csv_path
     else:
         selected_path = furi_csv_path
-    with lock:
-        with open(selected_path,'a') as f:
+    try:
+        lock
+    except NameError:
+        # print(f"[DEBUG] lock 未定義 -> ロックなしで続行")
+        class Dummy:
+            def __enter__(self): return None
+            def __exit__(self, *a): return False
+        dummy = Dummy()
+        ctx = dummy
+    else:
+        ctx = lock
+    with ctx:
+        with open(selected_path, 'a') as f:
             f.write(f'\n{data[0]}')
+
+    # with lock:
+    #     with open(selected_path,'a') as f:
+    #         f.write(f'\n{data[0]}')
 def add_perspective_gaussian_to_canvas(canvas, points, amplitude=1.0):
     # 領域の4点を取得
     src_points = np.array(points, dtype=np.float32)
@@ -824,6 +840,7 @@ def procedure_for_one_image(image, file_path=None,json_gt = None, show_flag=Fals
                        csv_path=CSV_PATH,
                        furi_csv_path= CSV_FURI_PATH,
                        furi_mode=True)
+    # print(f"[DEBUG] before update_json_data: file_id={file_id}, main_len={len(new_json_data['main_region'])}")
     # save_as_4channel_npy(main_region, main_affinity, furi_region, furi_affinity,
     #                      file_id=str(doc_id)+'_sep_'+file_path.split('/')[-1].split('.')[0],
     #                      save_path=GROUND_TRUTH_IMAGE_DIR_PATH)
@@ -834,51 +851,71 @@ def main_exe_for_one_image(file_path, json_gt, procedure_for_one_image=None):
         return None
     else:
         procedure_for_one_image(image,file_path,json_gt)
-        print(f'done : {file_path.split("/")[-1]}')
+        # print(f'done : {file_path.split("/")[-1]}')
 def load_GT_json(file_path):
     if not os.path.exists(file_path):
         print("json ファイルが存在しません。新しく作成します。")
         create_json_data()
     with open(file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    print("json データを読み込みました。")
+    # print("json データを読み込みました。")
     return data
 def create_json_data():
     data = {
         "files":{}
     }
     save_json_data(data, GT_JSON_PATH)
-    print("json 初期データを作成しました。")
+    # print("json 初期データを作成しました。")
 
 # データの保存
 def save_json_data(data, file_path):
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
-    print("json データを保存しました。")
+    # print("json データを保存しました。")
 
 
 def update_json_data(file_id, data, file_path):
-    with lock:
+    # print(f"[DEBUG] enter update_json_data: {file_id}, len(main_region)= {len(data['main_region'])}")
+    try:     
+        lock
+    except NameError:
+        # print("[DEBUG] lock 未定義 -> ロック無しで続行（単一プロセス前提）")
+        class Dummy:
+            def __enter__(self): return None
+            def __exit__(self, *a): return False
+        dummy = Dummy()
+        ctx = dummy
+    else:
+        ctx = lock
+    with ctx:
         json_data = load_GT_json(file_path)
         json_data['files'][file_id] = data
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(json_data, f, indent=4, ensure_ascii=False)
         with open(file_path.split('.json')[0]+'_backup.json', 'w', encoding='utf-8') as f:
             json.dump(json_data, f, indent=4, ensure_ascii=False)
-    print("json データを保存しました。")
+    # デバッグ：lockが未定義問題
+    # with lock:
+    #     json_data = load_GT_json(file_path)
+    #     json_data['files'][file_id] = data
+    #     with open(file_path, 'w', encoding='utf-8') as f:
+    #         json.dump(json_data, f, indent=4, ensure_ascii=False)
+    #     with open(file_path.split('.json')[0]+'_backup.json', 'w', encoding='utf-8') as f:
+    #         json.dump(json_data, f, indent=4, ensure_ascii=False)
+    # print("json データを保存しました。")
 
-def main_exe(procedure_for_one_image = None, testdata_doc_id = []):
-    doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
-    json_gt = load_GT_json(GT_JSON_PATH)
-    for doc_path in doc_path_list:
-        file_path_list = return_file_path_list(doc_path)
-        for file_path in file_path_list:
-            if procedure_for_one_image != None:
-                # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
-                main_exe_for_one_image(
-                    file_path=file_path, 
-                    json_gt = json_gt,
-                    procedure_for_one_image=procedure_for_one_image)
+# def main_exe(procedure_for_one_image = None, testdata_doc_id = []):
+#     doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
+#     json_gt = load_GT_json(GT_JSON_PATH)
+#     for doc_path in doc_path_list:
+#         file_path_list = return_file_path_list(doc_path)
+#         for file_path in file_path_list:
+#             if procedure_for_one_image != None:
+#                 # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
+#                 main_exe_for_one_image(
+#                     file_path=file_path, 
+#                     json_gt = json_gt,
+#                     procedure_for_one_image=procedure_for_one_image)
 # 画像全体に対する処理
 inpaint_level = 20
 IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images/input_images/'
@@ -892,7 +929,7 @@ if __name__ == "__main__":
     freeze_support()
     with Manager() as manager:
         lock = manager.Lock()
-        with ProcessPoolExecutor(max_workers=20) as executor:
+        with ProcessPoolExecutor(max_workers=1) as executor:
             futures = []
             results = []
             doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
@@ -913,13 +950,23 @@ if __name__ == "__main__":
                                 procedure_for_one_image=procedure_for_one_image
                             ))
                             # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
-                            main_exe_for_one_image(
-                                file_path=file_path, 
-                                json_gt = json_gt,
-                                procedure_for_one_image=procedure_for_one_image)
+                            # main_exe_for_one_image(
+                            #     file_path=file_path, 
+                            #     json_gt = json_gt,
+                            #     procedure_for_one_image=procedure_for_one_image)
             print('Waiting for all futures to complete...')
 
             # for f in tqdm(as_completed(futures), total=100):
             # for f in tqdm(as_completed(futures), total=100, file=sys.stdout):
-            for f in tqdm(as_completed(futures), total=100, file=sys.stdout,ncols=80, flush=True):
-                results.append(f.result())
+            # for f in tqdm(as_completed(futures), total=len(futures), file=sys.stdout,ncols=80, flush=True):
+            with tqdm(total = len(futures), ncols=80) as pbar:
+                for f in as_completed(futures):
+                    try:
+                        res = f.result()
+                        results.append(res)
+                    except Exception as e:
+                        import traceback
+                        print(" --- Future Exception ---")
+                        traceback.print_exc()
+                    finally:
+                        pbar.update(1)
