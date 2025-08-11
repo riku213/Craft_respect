@@ -35,7 +35,7 @@ class PreTrainDataset_old(Dataset):
         self.input_imageID_list = []
         for file_name in os.listdir(self.input_path):
             file_path = os.path.join(self.input_path, file_name)
-            if os.path.isfile(file_path):
+            if os.path.isfile(file_path) and file_name.split('.')[-1] == 'jpg':
                 if not (file_name.split('_sep_')[0] in self.test_doc_id_list) ^ test_mode:
                     self.input_imageID_list.append(file_name.split('.')[0])
         
