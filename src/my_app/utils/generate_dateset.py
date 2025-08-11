@@ -266,7 +266,8 @@ def write_csv_one_character(unicode, char_region_x0, char_region_y0, char_region
 def update_csv_one_doc(data, 
                        csv_path ,
                        furi_csv_path,
-                       furi_mode=False):
+                       furi_mode=False, 
+                       lock = None):
     if not furi_mode:
         selected_path = csv_path
     else:
@@ -274,7 +275,7 @@ def update_csv_one_doc(data,
     try:
         lock
     except NameError:
-        # print(f"[DEBUG] lock 未定義 -> ロックなしで続行")
+        print(f"[DEBUG] lock 未定義 -> ロックなしで続行")
         class Dummy:
             def __enter__(self): return None
             def __exit__(self, *a): return False
@@ -760,7 +761,7 @@ def draw_line(canvas, x0, y0, x1, y1, color=(255, 0, 0), thickness=2):
         thickness (int): 線の太さ。
     """
     cv2.line(canvas, (x0, y0), (x1, y1), color, thickness)
-def procedure_for_one_image(image, file_path=None,json_gt = None, show_flag=False):
+def procedure_for_one_image(image, file_path=None,json_gt = None, show_flag=False, lock=None,):
     doc_id = file_path.split('/')[-3]
     file_id = str(doc_id)+'_sep_'+file_path.split('/')[-1].split('.')[0]
     # csvファイルにその画像の情報を追加する
@@ -831,26 +832,29 @@ def procedure_for_one_image(image, file_path=None,json_gt = None, show_flag=Fals
     # 1枚の画像の処理が終わったらjsonを都度保存する。
     update_json_data(file_id=file_id, 
                      data=new_json_data,
-                     file_path=GT_JSON_PATH)
+                     file_path=GT_JSON_PATH, 
+                     lock=lock)
     update_csv_one_doc(data=main_csv_data,
                        csv_path=CSV_PATH,
                        furi_csv_path= CSV_FURI_PATH,
-                       furi_mode=False)
+                       furi_mode=False,
+                       lock = lock)
     update_csv_one_doc(data=furi_csv_data,
                        csv_path=CSV_PATH,
                        furi_csv_path= CSV_FURI_PATH,
-                       furi_mode=True)
+                       furi_mode=True,
+                       lock = lock)
     # print(f"[DEBUG] before update_json_data: file_id={file_id}, main_len={len(new_json_data['main_region'])}")
     # save_as_4channel_npy(main_region, main_affinity, furi_region, furi_affinity,
     #                      file_id=str(doc_id)+'_sep_'+file_path.split('/')[-1].split('.')[0],
     #                      save_path=GROUND_TRUTH_IMAGE_DIR_PATH)
-def main_exe_for_one_image(file_path, json_gt, procedure_for_one_image=None):
+def main_exe_for_one_image(file_path, json_gt, procedure_for_one_image=None, lock = None):
     image = judge_brightness_and_return_image(file_path)
     if image is None:
         print(f"Skipping {file_path.split('/')[-1]} due to brightness.")
         return None
     else:
-        procedure_for_one_image(image,file_path,json_gt)
+        procedure_for_one_image(image,file_path,json_gt, lock=lock)
         # print(f'done : {file_path.split("/")[-1]}')
 def load_GT_json(file_path):
     if not os.path.exists(file_path):
@@ -874,12 +878,12 @@ def save_json_data(data, file_path):
     # print("json データを保存しました。")
 
 
-def update_json_data(file_id, data, file_path):
+def update_json_data(file_id, data, file_path, lock):
     # print(f"[DEBUG] enter update_json_data: {file_id}, len(main_region)= {len(data['main_region'])}")
     try:     
         lock
     except NameError:
-        # print("[DEBUG] lock 未定義 -> ロック無しで続行（単一プロセス前提）")
+        print("[DEBUG] lock 未定義 -> ロック無しで続行（単一プロセス前提）")
         class Dummy:
             def __enter__(self): return None
             def __exit__(self, *a): return False
@@ -929,7 +933,7 @@ if __name__ == "__main__":
     freeze_support()
     with Manager() as manager:
         lock = manager.Lock()
-        with ProcessPoolExecutor(max_workers=1) as executor:
+        with ProcessPoolExecutor(max_workers=10) as executor:
             futures = []
             results = []
             doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
@@ -947,7 +951,8 @@ if __name__ == "__main__":
                                 main_exe_for_one_image, 
                                 file_path=file_path,
                                 json_gt=json_gt,
-                                procedure_for_one_image=procedure_for_one_image
+                                procedure_for_one_image=procedure_for_one_image, 
+                                lock=lock
                             ))
                             # 一枚の画像に対して、疑似的を文字を合成し、自己教師あり学習の正解データを作成する。
                             # main_exe_for_one_image(
