@@ -174,9 +174,10 @@ class PreTrainDataset_old(Dataset):
         
         # GPU上でガウス分布を生成
         device = self.device
-        x = torch.linspace(-width / 2, width / 2, width, device=device)
         y = torch.linspace(-height / 2, height / 2, height, device=device)
-        grid_x, grid_y = torch.meshgrid(x, y, indexing='ij')
+        x = torch.linspace(-width / 2, width / 2, width, device=device)
+
+        grid_y, grid_x = torch.meshgrid(y, x , indexing='ij')
         
         min_sigma = 1.0
         sigma_x = max(width / 5.0, min_sigma)
