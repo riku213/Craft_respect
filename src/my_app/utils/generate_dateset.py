@@ -933,7 +933,7 @@ if __name__ == "__main__":
     freeze_support()
     with Manager() as manager:
         lock = manager.Lock()
-        with ProcessPoolExecutor(max_workers=10) as executor:
+        with ProcessPoolExecutor(max_workers=5) as executor:
             futures = []
             results = []
             doc_path_list = return_doc_path_list(doc_path_list=testdata_doc_id)
