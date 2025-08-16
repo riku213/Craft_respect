@@ -177,7 +177,7 @@ class PreTrainDataset_old(Dataset):
         y = torch.linspace(-height / 2, height / 2, height, device=device)
         x = torch.linspace(-width / 2, width / 2, width, device=device)
 
-        grid_y, grid_x = torch.meshgrid(y, x , indexing='ij')
+        grid_y, grid_x = torch.meshgrid(y, x, indexing='ij')
         
         min_sigma = 1.0
         sigma_x = max(width / 5.0, min_sigma)
