@@ -7,6 +7,7 @@ test/Yolo_trial/yolov8n.pt
 .test/
 test/Yolo_trial/datasets
 test/cache/gt_cache_w300.pkl
+test/cache/vector_cache.pkl
 
 # Python cache files
 __pycache__/

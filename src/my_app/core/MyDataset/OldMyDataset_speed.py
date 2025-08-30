@@ -24,6 +24,7 @@ class PreTrainDataset_old(Dataset):
                  cache_dir=None):  # 事前計算オプションを追加
         super().__init__()
         self.test_doc_id_list = test_doc_id_list
+        self.test_mode = test_mode
         self.input_path = input_path
         self.transform = transform
         self.target_width = target_width
@@ -86,7 +87,11 @@ class PreTrainDataset_old(Dataset):
 
     def _precompute_ground_truth(self):
         """正解データを事前計算してキャッシュする"""
-        cache_file = os.path.join(self.cache_dir, f'gt_cache_w{self.target_width}.pkl')
+        if not self.test_mode:
+            cache_file = os.path.join(self.cache_dir, f'gt_cache_w{self.target_width}.pkl')
+        else:
+            cache_file = os.path.join(self.cache_dir, f'gt_cache_w{self.target_width}_test.pkl')
+
         
         # キャッシュディレクトリを作成
         os.makedirs(self.cache_dir, exist_ok=True)
