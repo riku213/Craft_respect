@@ -346,7 +346,10 @@ class PreTrainDataset_v3(Dataset):
                 with open(cache_file, 'rb') as f:
                     return pickle.load(f)
             except Exception:
+                print('[MyDataset_v3]: キャッシュ読み込み失敗')
                 pass
+        else:
+            print('[MyDataset_v3]: キャッシュが存在しません')
         pre = {}
         for image_id in self.input_imageID_list:
             img_path = os.path.join(self.input_path, image_id + '.jpg')
