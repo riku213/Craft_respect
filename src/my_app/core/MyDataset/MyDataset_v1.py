@@ -41,9 +41,7 @@ class PreTrainDataset_v1(Dataset):
                     self.input_imageID_list.append(file_name.split('.')[0])
         
         # アノテーションデータを保持するjsonファイルをロード
-        print(f'before loadGT {len(self.input_imageID_list)}')
         self.gt_json = self.load_GT_json(json_path)
-        print(f'after loadGT {len(self.input_imageID_list)}')
         
         # 事前計算を実行
         if self.precompute_gt:
@@ -98,16 +96,16 @@ class PreTrainDataset_v1(Dataset):
         
         # キャッシュファイルが存在する場合は読み込み
         if os.path.exists(cache_file):
-            print(f"正解データのキャッシュを読み込み中: {cache_file}")
+            print(f"[MyDataset_v1]: 正解データのキャッシュを読み込み中: {cache_file}")
             with open(cache_file, 'rb') as f:
                 return pickle.load(f)
-        
-        print("正解データを事前計算中...")
+
+        print("[MyDataset_v1]: 正解データを事前計算中...")
         precomputed_gt = {}
         
         for i, image_id in enumerate(self.input_imageID_list):
             if i % 100 == 0:
-                print(f"進捗: {i}/{len(self.input_imageID_list)}")
+                print(f"[MyDataset_v1]: 進捗: {i}/{len(self.input_imageID_list)}")
             
             # 画像サイズを取得
             image = Image.open(self.input_path + image_id + '.jpg')
@@ -129,7 +127,7 @@ class PreTrainDataset_v1(Dataset):
             precomputed_gt[image_id] = tensor_gt
         
         # キャッシュに保存
-        print(f"正解データをキャッシュに保存中: {cache_file}")
+        print(f"[MyDataset_v1]: 正解データをキャッシュに保存中: {cache_file}")
         with open(cache_file, 'wb') as f:
             pickle.dump(precomputed_gt, f)
         
@@ -138,7 +136,7 @@ class PreTrainDataset_v1(Dataset):
     def load_GT_json(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        print("json データを読み込みました。")
+        print("[MyDataset_v1]: json データを読み込みました。")
         return data
 
     def return_ground_truth_canvas(self, image):
@@ -212,8 +210,8 @@ class PreTrainDataset_v1(Dataset):
             canvas_tensor += transformed_tensor
             
         except Exception as e:
-            print(f"Warning: perspective transformation failed - {e}")
-        
+            print(f"[MyDataset_v1]: perspective transformation failed - {e}")
+
         return canvas_tensor
 
     def add_perspective_gaussian_to_canvas(self, canvas, points, amplitude=1.0):
@@ -271,7 +269,7 @@ class PreTrainDataset_v1(Dataset):
             canvas += transformed_gaussian
 
         except Exception as e:
-            print(f"Warning: perspective transformation failed - {e}")
+            print(f"[MyDataset_v1]: perspective transformation failed - {e}")
             # エラーが発生した場合は、キャンバスをそのまま返す
 
         return canvas
@@ -379,18 +377,18 @@ class PreTrainDataset_v1(Dataset):
 
     def benchmark_dataset(self, num_samples=100):
         """データセットのベンチマークを実行"""
-        print(f"ベンチマーク開始: {num_samples}サンプル")
+        print(f"[MyDataset_v1]: ベンチマーク開始: {num_samples}サンプル")
         start_time = time.time()
         
         for i in range(min(num_samples, len(self))):
             if i % 20 == 0:
-                print(f"進捗: {i}/{num_samples}")
+                print(f"[MyDataset_v1]: 進捗: {i}/{num_samples}")
             _ = self[i]
         
         end_time = time.time()
         total_time = end_time - start_time
         avg_time = total_time / num_samples
-        
-        print(f"総時間: {total_time:.2f}秒")
-        print(f"平均時間/サンプル: {avg_time:.4f}秒")
-        print(f"スループット: {num_samples/total_time:.2f}サンプル/秒")
+
+        print(f"[MyDataset_v1]: 総時間: {total_time:.2f}秒")
+        print(f"[MyDataset_v1]: 平均時間/サンプル: {avg_time:.4f}秒")
+        print(f"[MyDataset_v1]: スループット: {num_samples/total_time:.2f}サンプル/秒")
