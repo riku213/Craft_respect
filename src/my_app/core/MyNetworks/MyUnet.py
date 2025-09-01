@@ -1,4 +1,4 @@
-import torch
+import torch, os
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -82,3 +82,25 @@ class UNet(nn.Module):
         
         # スライシングでクロップ
         return source[:, :, delta_h:delta_h + target_size_h, delta_w:delta_w + target_size_w]
+    
+    def load_check_point(
+            self,
+            checkpoint_path,
+            optimizer, 
+            ):
+        train_loss_history=[]
+        test_loss_history=[]
+        if os.path.exists(checkpoint_path):
+            checkpoint = torch.load(checkpoint_path, map_location='cpu')
+            self.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch']
+            best_test_loss = checkpoint.get('best_test_loss', float('inf'))
+            train_loss_history = checkpoint.get('train_loss_history', train_loss_history)
+            test_loss_history  = checkpoint.get('test_loss_history',  test_loss_history)
+            print(f"[MyUnet]: チェックポイントを読み込みました（エポック {start_epoch}）")
+        else:
+            start_epoch = 0
+            best_test_loss = float('inf')
+            print('[MyUnet]: チェックポイントが存在しません。')
+        return start_epoch, best_test_loss, train_loss_history, test_loss_history
