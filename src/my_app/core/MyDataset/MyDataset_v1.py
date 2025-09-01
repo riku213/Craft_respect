@@ -11,7 +11,7 @@ import pickle
 import time
 
 
-class PreTrainDataset_old(Dataset):
+class PreTrainDataset_v1(Dataset):
     def __init__(self,
                  test_doc_id_list,
                  test_mode=False,

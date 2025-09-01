@@ -75,13 +75,15 @@ class VerticalClustering:
         plt.show()
         return labels_ws
 
-    def show_combine_image(self, image_A, image_B, show_flag=True):
+    def get_combine_image(self, image_A, image_B):
         combined_image = (image_A / 2) + (image_B / 2)
-        if show_flag:
-            plt.imshow(combined_image, cmap='nipy_spectral')
-            plt.show()
         return combined_image
 
+    def show_combine_image(self, image_A, image_B):
+        combined_image = self.get_combine_image(image_A, image_B)
+        plt.imshow(combined_image, cmap='nipy_spectral')
+        plt.title("Combined Image")
+        plt.show()
 
     def fill_vertical_small_gaps(self, bin_img: np.ndarray, gap_limit: int):
         """
@@ -166,9 +168,6 @@ class VerticalClustering:
                     work = cv2.dilate(work, kernel, iterations=iterations)
                 elif mode == "closing":
                     work = cv2.morphologyEx(work, cv2.MORPH_CLOSE, kernel, iterations=iterations)
-        
-        plt.imshow(work, cmap='nipy_spectral')
-        plt.show()
 
         # 4) 連結成分
         n_labels, labels = cv2.connectedComponents(work, connectivity)
