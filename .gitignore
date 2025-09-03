@@ -8,6 +8,11 @@ test/Yolo_trial/yolov8n.pt
 test/Yolo_trial/datasets
 test/cache/gt_cache_w300.pkl
 test/cache/vector_cache.pkl
+*.pth
+*.pt
+*.ckpt
+*.ipynb_checkpoints
+
 
 # Python cache files
 __pycache__/
