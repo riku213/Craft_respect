@@ -12,7 +12,8 @@ test/cache/vector_cache.pkl
 *.pt
 *.ckpt
 *.ipynb_checkpoints
-
+test/cache/gt_cache_v3_w300.pkl
+test/cache/*
 
 # Python cache files
 __pycache__/
