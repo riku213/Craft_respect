@@ -135,7 +135,6 @@ class FineTuningDataset_v1(Dataset):
 
     def __getitem__(self, idx: int):
         path = self.image_paths[idx]
-        path_str = str(path)
 
         # 画像ロード + リサイズ + Tensor 化 (キャッシュ利用)
         img_tensor, resized_pil, original_size = self._load_image_tensor(path, cache=True)
@@ -199,6 +198,7 @@ class FineTuningDataset_v1(Dataset):
     def _get_or_build_gt(self, key: str, image_pil: Image.Image, original_size: Tuple[int, int], doc_id: str, image_id: str) -> torch.Tensor:
         # 1. メモリ
         if self.in_memory_gt and key in self._gt_cache_mem:
+            # print('[FineTuningDataset_v1] GT メモリキャッシュ ヒット:', key)
             return self._gt_cache_mem[key]
         # 2. ディスク
         if self.use_disk_cache and self.cache_dir is not None:
@@ -208,6 +208,7 @@ class FineTuningDataset_v1(Dataset):
                     gt = torch.load(fp, map_location='cpu')
                     if self.in_memory_gt:
                         self._gt_cache_mem[key] = gt
+                    # print('[FineTuningDataset_v1] GT ディスクキャッシュ ヒット:', key)
                     return gt
                 except Exception:
                     pass  # 壊れていたら再生成
@@ -224,6 +225,7 @@ class FineTuningDataset_v1(Dataset):
                 torch.save(gt, self._gt_file_path(key))
             except Exception:
                 pass
+        # print('[FineTuningDataset_v1] GT 生成:', key)
         return gt
 
     # --------------------------------------------------
