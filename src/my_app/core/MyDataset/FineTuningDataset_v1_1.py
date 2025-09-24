@@ -54,10 +54,6 @@ class FineTuningDataset_v1_1(Dataset):
         image_cache_size: int = 64,
         allow_cache_with_transform: bool = False,
         verbose: bool = True,
-        # ---- ガウス中心バイアス制御 ----
-        center_bias_alpha: float = 0.0,  # 0.0=オフ, 1.0=完全にターゲット側へ
-        center_bias_mode: str = 'toward_long_base',  # 'toward_long_base' | 'toward_short_base' | 'custom_fraction'
-        center_bias_fraction: float = 0.3,  # mode='custom_fraction' の時 0=上 1=下 (長辺回転後の矩形座標)
     ):
         self.test_doc_id = test_doc_id
         self.test_mode = test_mode
@@ -72,10 +68,6 @@ class FineTuningDataset_v1_1(Dataset):
         self.image_cache_size = max(0, image_cache_size)
         self.allow_cache_with_transform = allow_cache_with_transform
         self.verbose = verbose
-        # ガウス中心バイアス設定
-        self.center_bias_alpha = float(center_bias_alpha)
-        self.center_bias_mode = center_bias_mode
-        self.center_bias_fraction = float(center_bias_fraction)
 
         try:
             import cv2  # noqa: F401
@@ -393,29 +385,9 @@ class FineTuningDataset_v1_1(Dataset):
 
             cx_src, cy_src = _polygon_centroid(src.astype(np.float64))
 
-            # 重心（台形座標）を矩形座標へ逆写像 → ガウス基準中心
+            # 重心（台形座標）を矩形座標へ逆写像 → ガウス中心
             pt = np.array([[[cx_src, cy_src]]], dtype=np.float32)
             cx_rect, cy_rect = cv2.perspectiveTransform(pt, Minv)[0, 0]
-
-            # ---- 中心バイアス（長辺 or 短辺 方向へシフト）----
-            if self.center_bias_alpha > 0.0:
-                # w_top, w_bot は既に計算済み
-                long_top = w_top >= w_bot
-                # ターゲット Y 決定 (矩形座標 0=上, height-1=下)
-                if self.center_bias_mode == 'toward_long_base':
-                    target_y = 0 if long_top else (height - 1)
-                elif self.center_bias_mode == 'toward_short_base':
-                    target_y = 0 if not long_top else (height - 1)
-                elif self.center_bias_mode == 'custom_fraction':
-                    # 0=上,1=下 に線形にマップ
-                    frac = min(max(self.center_bias_fraction, 0.0), 1.0)
-                    target_y = frac * (height - 1)
-                else:
-                    target_y = cy_rect  # 未知モード→無効
-                # 線形内挿 (alpha=1 なら完全ターゲット)
-                cy_rect = (1.0 - self.center_bias_alpha) * cy_rect + self.center_bias_alpha * target_y
-                # クランプ
-                cy_rect = float(np.clip(cy_rect, 0.0, height - 1.0))
 
             # ガウス生成（矩形画像上）
             xg = np.arange(width, dtype=np.float32)
@@ -510,14 +482,13 @@ class FineTuningDataset_v1_1(Dataset):
             scaled = arr.tolist()
             self._draw_quads(canvases[name], scaled)
 
+        # 0-1 にクリップ（重なりで >1 を防ぐ）
+        for name in channel_names:
+            np.clip(canvases[name], 0.0, 1.0, out=canvases[name])
+
         tensors = []
         for name in channel_names:
-            if ensure_four_channels:
-                tensors.append(torch.from_numpy(canvases[name]))
-            else:
-                # 非ゼロ判定で省略したい場合の分岐（今回は常に追加）
-                tensors.append(torch.from_numpy(canvases[name]))
-
+            tensors.append(torch.from_numpy(canvases[name]))
         heatmaps = torch.stack(tensors, dim=0)  # [4,H,W]
         return heatmaps
 
