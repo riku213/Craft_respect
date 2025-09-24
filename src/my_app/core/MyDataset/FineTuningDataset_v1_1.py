@@ -150,7 +150,10 @@ class FineTuningDataset_v1_1(Dataset):
     # キャッシュキー
     # --------------------------------------------------
     def _cache_key(self, doc_id: str, image_id: str) -> str:
-        return f'{doc_id}_sep_{image_id}'
+        # サイズや dtype の違いで衝突しないようにキーに設定を含める
+        dtype_tag = 'fp16' if self.use_fp16_gt else 'fp32'
+        return f'v1_tw{self.target_width}_{dtype_tag}_{doc_id}_sep_{image_id}'
+
 
     def _gt_file_path(self, key: str) -> Path:
         assert self.cache_dir is not None
@@ -198,7 +201,6 @@ class FineTuningDataset_v1_1(Dataset):
     def _get_or_build_gt(self, key: str, image_pil: Image.Image, original_size: Tuple[int, int], doc_id: str, image_id: str) -> torch.Tensor:
         # 1. メモリ
         if self.in_memory_gt and key in self._gt_cache_mem:
-            # print('[FineTuningDataset_v1] GT メモリキャッシュ ヒット:', key)
             return self._gt_cache_mem[key]
         # 2. ディスク
         if self.use_disk_cache and self.cache_dir is not None:
@@ -206,9 +208,16 @@ class FineTuningDataset_v1_1(Dataset):
             if fp.exists():
                 try:
                     gt = torch.load(fp, map_location='cpu')
+                    # 現在設定との整合チェック（サイズ・dtype）
+                    w, h = image_pil.size
+                    if gt.shape[-2:] != (h, w):
+                        raise ValueError('cached GT size mismatch')
+                    if self.use_fp16_gt and gt.dtype != torch.float16:
+                        gt = gt.half()
+                    elif (not self.use_fp16_gt) and gt.dtype != torch.float32:
+                        gt = gt.float()
                     if self.in_memory_gt:
                         self._gt_cache_mem[key] = gt
-                    # print('[FineTuningDataset_v1] GT ディスクキャッシュ ヒット:', key)
                     return gt
                 except Exception:
                     pass  # 壊れていたら再生成

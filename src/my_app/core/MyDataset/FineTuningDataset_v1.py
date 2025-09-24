@@ -198,7 +198,6 @@ class FineTuningDataset_v1(Dataset):
     def _get_or_build_gt(self, key: str, image_pil: Image.Image, original_size: Tuple[int, int], doc_id: str, image_id: str) -> torch.Tensor:
         # 1. メモリ
         if self.in_memory_gt and key in self._gt_cache_mem:
-            # print('[FineTuningDataset_v1] GT メモリキャッシュ ヒット:', key)
             return self._gt_cache_mem[key]
         # 2. ディスク
         if self.use_disk_cache and self.cache_dir is not None:
