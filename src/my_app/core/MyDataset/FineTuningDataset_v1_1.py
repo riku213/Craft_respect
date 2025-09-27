@@ -132,6 +132,9 @@ class FineTuningDataset_v1_1(Dataset):
 
     def __len__(self):
         return len(self.image_paths)
+    
+    def get_image_paths(self):
+        return self.image_paths
 
     def __getitem__(self, idx: int):
         path = self.image_paths[idx]
