@@ -76,7 +76,7 @@ class PredictImages:
             self.best_test_loss = self.checkpoint.get('best_test_loss', float('inf'))
             self.train_loss_history = self.checkpoint.get('train_loss_history', self.train_loss_history)
             self.test_loss_history  = self.checkpoint.get('test_loss_history',  self.test_loss_history)
-            print(f"[main]: チェックポイントを読み込みました（エポック {self.start_epoch}）")
+            print(f"[PredictImages]: チェックポイントを読み込みました（エポック {self.start_epoch}）")
         else:
             self.start_epoch = 0
             self.best_test_loss = float('inf')
@@ -121,19 +121,19 @@ class PredictImages:
             # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             start_epoch = 0
             best_test_loss = checkpoint.get('best_test_loss', float('inf'))
-            train_loss_history = checkpoint.get('train_loss_history', train_loss_history)
-            test_loss_history  = checkpoint.get('test_loss_history',  test_loss_history)
-            print(f"[main]: チェックポイントを読み込みました（エポック {start_epoch}）")
+            self.train_loss_history = checkpoint.get('train_loss_history', self.train_loss_history)
+            self.test_loss_history  = checkpoint.get('test_loss_history',  self.test_loss_history)
+            print(f"[PredictImages]: チェックポイントを読み込みました（エポック {start_epoch}）")
         else:
             start_epoch = 0
             best_test_loss = float('inf')
-            print(f"[main]: チェックポイントが見つかりません。新しいモデルで開始します。")
+            print(f"[PredictImages]: チェックポイントが見つかりません。新しいモデルで開始します。")
         # 以降は train_loss_history / test_loss_history を再初期化しない
 
         if test_mode:
-            test_bar = tqdm(self.test_loader, desc=f"[] Epoch {epoch+1}/{num_epochs} [Train]")
+            test_bar = tqdm(self.test_loader, desc=f"[PredictImages] Epoch {epoch+1}/{num_epochs} [Train]")
         else:
-            test_bar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
+            test_bar = tqdm(self.train_loader, desc=f"[PredictImages] Epoch {epoch+1}/{num_epochs} [Train]")
 
         image_list = []
         teacher_heatmap_list = []
