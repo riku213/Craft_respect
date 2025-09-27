@@ -21,7 +21,8 @@ class WaterShedTool:
         plt.show()
 
     def show_overlay(self, img, label):
-        overlay = label2rgb(label, image=img, bg_label=0, alpha=0.4)
+        nump_img = img.permute(1,2,0).numpy()
+        overlay = label2rgb(label, image=nump_img, bg_label=0, alpha=0.4)
         plt.title('overlay')
         plt.imshow(overlay)
         plt.show()

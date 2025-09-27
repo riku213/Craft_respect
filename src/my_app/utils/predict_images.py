@@ -151,7 +151,7 @@ class PredictImages:
             pred = self.model(imgs.to(self.device))
             cropped_imgs = self.crop_labels_to_match(imgs, pred)
             cropped_masks = self.crop_labels_to_match(masks, pred)
-            image_list.append(cropped_imgs.cpu().detach())
-            teacher_heatmap_list.append(cropped_masks.cpu().detach())
-            pred_heatmap_list.append(pred.cpu().detach())
+            image_list.append(cropped_imgs.cpu().detach()[0])
+            teacher_heatmap_list.append(cropped_masks.cpu().detach()[0])
+            pred_heatmap_list.append(pred.cpu().detach()[0])
         return image_list, teacher_heatmap_list, pred_heatmap_list 
