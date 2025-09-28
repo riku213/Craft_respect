@@ -15,6 +15,7 @@ test/cache/vector_cache.pkl
 test/cache/gt_cache_v3_w300.pkl
 test/cache/*
 checkpoints_finetuning
+test\.cache\fine_v1_gt\*
 
 # Python cache files
 __pycache__/
@@ -60,6 +61,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.cache/*
 nosetests.xml
 coverage.xml
 *.cover
