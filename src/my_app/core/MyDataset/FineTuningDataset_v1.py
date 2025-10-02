@@ -68,6 +68,7 @@ class FineTuningDataset_v1(Dataset):
         self.image_cache_size = max(0, image_cache_size)
         self.allow_cache_with_transform = allow_cache_with_transform
         self.verbose = verbose
+        self.orig_size_list = []
 
         try:
             import cv2  # noqa: F401
@@ -135,13 +136,22 @@ class FineTuningDataset_v1(Dataset):
     
     def get_image_paths(self):
         return self.image_paths
+    
+    def get_orig_size_list(self):
+        print("[FineTuningDataset_v1]get_orig_size_list called")
+        for i in range(len(self.image_paths)):
+            focused_path = self.image_paths[i]
+            image = Image.open(focused_path).convert('RGB')
+            original_w, original_h = image.size
+            self.orig_size_list.append((original_w, original_h)) # (width, height)
+        return self.orig_size_list
 
     def __getitem__(self, idx: int):
         path = self.image_paths[idx]
 
         # 画像ロード + リサイズ + Tensor 化 (キャッシュ利用)
         img_tensor, resized_pil, original_size = self._load_image_tensor(path, cache=True)
-
+        self.orig_size_list.append(original_size) # (width, height)
         # GT 取得
         doc_id, image_id = self._get_doc_image_id(path)
         key = self._cache_key(doc_id, image_id)

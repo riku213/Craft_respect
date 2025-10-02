@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from src.my_app import UNet, create_optimized_dataloader
 import torch
 from tqdm import tqdm
+from src.my_app.utils.cood_manager import CoodManager
 
 IMAGES_DIR = Path('../../kuzushiji-recognition/char_sep_datas')  # 画像ディレクトリ
 GT_JSON_PATH = Path('../../kuzushiji-recognition/char_sep_datas/gt_json.json')    # アノテーションJSON (未使用でもロード例)
@@ -76,7 +77,7 @@ class PredictImages:
             self.best_test_loss = self.checkpoint.get('best_test_loss', float('inf'))
             self.train_loss_history = self.checkpoint.get('train_loss_history', self.train_loss_history)
             self.test_loss_history  = self.checkpoint.get('test_loss_history',  self.test_loss_history)
-            print(f"[PredictImages]: チェックポイントを読み込みました（エポック {self.start_epoch}）")
+            # print(f"[PredictImages]: チェックポイントを読み込みました（エポック {self.start_epoch}）")
         else:
             self.start_epoch = 0
             self.best_test_loss = float('inf')
@@ -130,9 +131,14 @@ class PredictImages:
             print(f"[PredictImages]: チェックポイントが見つかりません。新しいモデルで開始します。")
         # 以降は train_loss_history / test_loss_history を再初期化しない
 
+        cood_manager = CoodManager()
         if test_mode:
+            cood_list = cood_manager.get_cood_list(self.test_dataset.get_image_paths())
+            orig_size_list = self.test_dataset.get_orig_size_list()
             test_bar = tqdm(self.test_loader, desc=f"[PredictImages] Epoch {epoch+1}/{num_epochs} [Train]")
         else:
+            cood_list = cood_manager.get_cood_list(self.train_dataset.get_image_paths())
+            orig_size_list = self.train_dataset.get_orig_size_list()
             test_bar = tqdm(self.train_loader, desc=f"[PredictImages] Epoch {epoch+1}/{num_epochs} [Train]")
 
         image_list = []
@@ -154,4 +160,4 @@ class PredictImages:
             image_list.append(cropped_imgs.cpu().detach()[0])
             teacher_heatmap_list.append(cropped_masks.cpu().detach()[0])
             pred_heatmap_list.append(pred.cpu().detach()[0])
-        return image_list, teacher_heatmap_list, pred_heatmap_list 
+        return image_list, teacher_heatmap_list, pred_heatmap_list , cood_list, orig_size_list
