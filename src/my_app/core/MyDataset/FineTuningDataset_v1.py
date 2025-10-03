@@ -138,7 +138,6 @@ class FineTuningDataset_v1(Dataset):
         return self.image_paths
     
     def get_orig_size_list(self):
-        print("[FineTuningDataset_v1]get_orig_size_list called")
         for i in range(len(self.image_paths)):
             focused_path = self.image_paths[i]
             image = Image.open(focused_path).convert('RGB')

@@ -14,6 +14,8 @@ from src.my_app import UNet, create_optimized_dataloader
 import torch
 from tqdm import tqdm
 from src.my_app.utils.cood_manager import CoodManager
+import torch.nn.functional as F
+
 
 IMAGES_DIR = Path('../../kuzushiji-recognition/char_sep_datas')  # 画像ディレクトリ
 GT_JSON_PATH = Path('../../kuzushiji-recognition/char_sep_datas/gt_json.json')    # アノテーションJSON (未使用でもロード例)
@@ -107,6 +109,34 @@ class PredictImages:
         delta_w = (source_w - target_w) // 2
         return labels_to_crop[:, :, delta_h:delta_h + target_h, delta_w:delta_w + target_w]
     
+    def resize_keep_aspect_to_width(self, imgs: torch.Tensor, target_w: int):
+        """
+        imgs: [N,C,H,W] または [C,H,W] の Torch テンソル（float推奨, 0..1）
+        target_w: 目的の横幅（ピクセル）
+        戻り値: resized_imgs([N,C,new_h,target_w] or [C,new_h,target_w]), (sy, sx)
+        """
+        single = (imgs.ndim == 3)
+        if single:
+            imgs = imgs.unsqueeze(0)  # [1,C,H,W]
+
+        N, C, H, W = imgs.shape
+        if W == 0:
+            raise ValueError("Width is zero.")
+        new_h = max(1, int(round(H * (target_w / W))))
+        size = (new_h, target_w)
+
+        # antialias は PyTorch>=2.0 で有効。古い版でも動くように try/except。
+        try:
+            resized = F.interpolate(imgs, size=size, mode="bilinear", align_corners=False, antialias=True)
+        except TypeError:
+            resized = F.interpolate(imgs, size=size, mode="bilinear", align_corners=False)
+
+        sx = target_w / W
+        sy = new_h / H
+
+        if single:
+            resized = resized.squeeze(0)  # [C,new_h,target_w]
+        return resized, (sy, sx)
     def predict(self, test_mode=True):
         epoch = 0
         num_epochs = 1
@@ -144,6 +174,8 @@ class PredictImages:
         image_list = []
         teacher_heatmap_list = []
         pred_heatmap_list = []
+        pred_heatmap_list_100 = []
+        pred_heatmap_list_200 = []
         for batch in test_bar:
             # バッチは (imgs, masks, file_id) 想定
             if len(batch) == 3:
@@ -152,12 +184,18 @@ class PredictImages:
                 file_ids = batch[2]
             elif len(batch) == 2:
                 imgs = batch[0]
+                resized_imgs100, (sy, sx) = self.resize_keep_aspect_to_width(imgs, target_w=100)
+                resized_imgs200, (sy, sx) = self.resize_keep_aspect_to_width(imgs, target_w=200)
                 masks = batch[1]
                 file_ids = None
             pred = self.model(imgs.to(self.device))
+            pred_100 = self.model(resized_imgs100.to(self.device))
+            pred_200 = self.model(resized_imgs200.to(self.device))
             cropped_imgs = self.crop_labels_to_match(imgs, pred)
             cropped_masks = self.crop_labels_to_match(masks, pred)
             image_list.append(cropped_imgs.cpu().detach()[0])
             teacher_heatmap_list.append(cropped_masks.cpu().detach()[0])
             pred_heatmap_list.append(pred.cpu().detach()[0])
-        return image_list, teacher_heatmap_list, pred_heatmap_list , cood_list, orig_size_list
+            pred_heatmap_list_100.append(pred_100.cpu().detach()[0])
+            pred_heatmap_list_200.append(pred_200.cpu().detach()[0])
+        return image_list, teacher_heatmap_list, pred_heatmap_list , cood_list, orig_size_list, pred_heatmap_list_100, pred_heatmap_list_200
