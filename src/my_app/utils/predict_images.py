@@ -199,3 +199,19 @@ class PredictImages:
             pred_heatmap_list_100.append(pred_100.cpu().detach()[0])
             pred_heatmap_list_200.append(pred_200.cpu().detach()[0])
         return image_list, teacher_heatmap_list, pred_heatmap_list , cood_list, orig_size_list, pred_heatmap_list_100, pred_heatmap_list_200
+
+    def convert_boxes_to_orgsize(boxes, box_width, org_width, org_height):
+        box_height = box_width * (org_height / org_width)
+
+        rate_hor = org_width / box_width
+        rate_ver = org_height / box_height
+
+        resized_boxes = []
+        for box in boxes:
+            x, y, w, h = box
+            rx = (x * rate_hor)
+            ry = (y * rate_ver)
+            rw = (w * rate_hor)
+            rh = (h * rate_ver)
+            resized_boxes.append([rx, ry, rw, rh])
+            

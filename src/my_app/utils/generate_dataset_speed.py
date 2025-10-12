@@ -163,7 +163,7 @@ def decide_upper_lower_coodinate(image: np.ndarray) -> tuple:
     return upper_cood, lower_cood, left_cood, right_cood
 
 # 何行含むか決定
-def generate_uniform_integers(low=6, high=15, size=1):
+def generate_uniform_integers(low=1, high=15, size=1):
     return np.random.randint(low, high + 1, size)[0]
 
 # 正解データのためのキャンバスをnumpy.ndarrayで作成
@@ -764,7 +764,7 @@ def save_as_4channel_npy(array1, array2, array3, array4, file_id, save_path):
 def export_image_as_jpg(image: np.ndarray, 
                         output_filename: str = "output.jpg", 
                         quality: int = 95,
-                        image_dir = '../kuzushiji-recognition/synthetic_images/input_images'):
+                        image_dir = '../kuzushiji-recognition/synthetic_images_2/input_images'):
     # ファイル名に拡張子が含まれていない場合、.jpgを追加
     if not output_filename.lower().endswith(".jpg"):
         output_filename += ".jpg"
@@ -1059,12 +1059,12 @@ def update_json_data(file_id, data, file_path, lock):
 #                     procedure_for_one_image=procedure_for_one_image)
 # 画像全体に対する処理
 inpaint_level = 20
-IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images/input_images/'
-GROUND_TRUTH_IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images/ground_truth_images/'
-GT_JSON_PATH = '../kuzushiji-recognition/synthetic_images/gt_json.json'
+IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images_2/input_images/'
+GROUND_TRUTH_IMAGE_DIR_PATH = '../kuzushiji-recognition/synthetic_images_2/ground_truth_images/'
+GT_JSON_PATH = '../kuzushiji-recognition/synthetic_images_2/gt_json.json'
 GT_JSON_SHARDS_DIR = os.path.join(os.path.dirname(GT_JSON_PATH), 'gt_json_shards')
-CSV_PATH = '../kuzushiji-recognition/synthetic_images/pre_training_color_annotations.csv'
-CSV_FURI_PATH = '../kuzushiji-recognition/synthetic_images/pre_training_color_furi_annotations.csv'
+CSV_PATH = '../kuzushiji-recognition/synthetic_images_2/pre_training_color_annotations.csv'
+CSV_FURI_PATH = '../kuzushiji-recognition/synthetic_images_2/pre_training_color_furi_annotations.csv'
 testdata_doc_id = []
 if __name__ == "__main__":
     from multiprocessing import freeze_support
