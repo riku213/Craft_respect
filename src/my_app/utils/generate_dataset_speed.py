@@ -859,7 +859,7 @@ def procedure_for_one_image(image, file_path=None,json_gt = None, show_flag=Fals
         draw_line(paper, left_cood,upper_cood,left_cood,lower_cood, color=(ink_rgb_bgr[0],ink_rgb_bgr[1],ink_rgb_bgr[2]), thickness=int(thickness))
         draw_line(paper, right_cood,upper_cood,right_cood,lower_cood, color=(ink_rgb_bgr[0],ink_rgb_bgr[1],ink_rgb_bgr[2]), thickness=int(thickness))
     # 行数を決定する。
-    number_of_lines = generate_uniform_integers(low=6, high=15, size=1)
+    number_of_lines = generate_uniform_integers(low=1, high=14, size=1)
     # 正解データとなるキャンバスを作成: 削除
     # main_region, main_affinity, furi_region, furi_affinity = return_ground_truth_canvas(image)
     # 文字を配置する行の座標を計算する

@@ -17,11 +17,13 @@ from src.my_app.utils.cood_manager import CoodManager
 import torch.nn.functional as F
 
 
-IMAGES_DIR = Path('../../kuzushiji-recognition/char_sep_datas')  # 画像ディレクトリ
-GT_JSON_PATH = Path('../../kuzushiji-recognition/char_sep_datas/gt_json.json')    # アノテーションJSON (未使用でもロード例)
-
 class PredictImages:
-    def __init__(self):
+    def __init__(self,
+                IMAGES_DIR = '../../kuzushiji-recognition/char_sep_datas',  # 画像ディレクトリ
+                GT_JSON_PATH = '../../kuzushiji-recognition/char_sep_datas/gt_json.json',    # アノテーションJSON (未使用でもロード例)        
+                checkpoint_dir = "../.checkpoints",
+                checkpoint_dir_finetuning = "../checkpoints_finetuning"
+):
         test_doc_id_list = [
             '200021637',
             '100249371',
@@ -32,19 +34,21 @@ class PredictImages:
             '200021712',
             '200021869'
         ]
+        self.IMAGES_DIR = IMAGES_DIR
+        self.GT_JSON_PATH = GT_JSON_PATH
         self.train_dataset = FineTuningDataset_v1(
             test_doc_id=test_doc_id_list,
             test_mode=False,
-            images_dir=IMAGES_DIR, 
-            json_path=GT_JSON_PATH,
+            images_dir=Path(IMAGES_DIR), 
+            json_path=Path(GT_JSON_PATH),
             precompute_gt=True,
             target_width=300,
             )
         self.test_dataset = FineTuningDataset_v1(
             test_doc_id=test_doc_id_list,
             test_mode=True,
-            images_dir=IMAGES_DIR,
-            json_path=GT_JSON_PATH,
+            images_dir=Path(IMAGES_DIR),
+            json_path=Path(GT_JSON_PATH),
             precompute_gt=True,
             target_width=300,
         )
@@ -52,7 +56,8 @@ class PredictImages:
         self.test_loader = DataLoader(self.test_dataset, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
         self.check_point_version = '1.1'
-        self.checkpoint_dir = "../.checkpoints"
+        self.checkpoint_dir = checkpoint_dir
+        self.checkpoint_dir_finetuning = checkpoint_dir_finetuning
         self.checkpoint_path = os.path.join(self.checkpoint_dir, f"latest_checkpoint_V{self.check_point_version}.pth")
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -141,7 +146,7 @@ class PredictImages:
         epoch = 0
         num_epochs = 1
 
-        checkpoint_dir = "../checkpoints_finetuning"
+        checkpoint_dir = Path(self.checkpoint_dir_finetuning)
         check_point_version = '1.1'
         checkpoint_path = os.path.join(checkpoint_dir, f"latest_checkpoint_V{check_point_version}.pth")
 
@@ -158,10 +163,10 @@ class PredictImages:
         else:
             start_epoch = 0
             best_test_loss = float('inf')
-            print(f"[PredictImages]: チェックポイントが見つかりません。新しいモデルで開始します。")
+            print(f"[PredictImages]: チェックポイントが見つかりません。{checkpoint_path}新しいモデルで開始します。")
         # 以降は train_loss_history / test_loss_history を再初期化しない
 
-        cood_manager = CoodManager()
+        cood_manager = CoodManager(csv_path_dir=self.IMAGES_DIR)
         if test_mode:
             cood_list = cood_manager.get_cood_list(self.test_dataset.get_image_paths())
             orig_size_list = self.test_dataset.get_orig_size_list()

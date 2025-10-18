@@ -1,4 +1,6 @@
 class CoodManager:
+    def __init__(self, csv_path_dir='../../kuzushiji-recognition/char_sep_datas'):
+        self.csv_path_dir = csv_path_dir
     def get_cood_list(self,images_paths):
         ret_list = []
         for image_path in images_paths:
@@ -14,7 +16,7 @@ class CoodManager:
         return ret_list
 
     def get_one_cood_list(self, doc_id, image_id):
-        csv_path = f'../../kuzushiji-recognition/char_sep_datas/{doc_id}/{doc_id}_coordinate.csv'
+        csv_path = self.csv_path_dir + f'/{doc_id}/{doc_id}_coordinate.csv'
         with open(csv_path, 'r', encoding='utf-8') as f:
             lines = f.readline()
             ret_list = []
