@@ -142,7 +142,7 @@ class PredictImages:
         if single:
             resized = resized.squeeze(0)  # [C,new_h,target_w]
         return resized, (sy, sx)
-    def predict(self, test_mode=True):
+    def predict(self, test_mode=True, multi_scale=True):
         epoch = 0
         num_epochs = 1
 
@@ -165,14 +165,17 @@ class PredictImages:
             best_test_loss = float('inf')
             print(f"[PredictImages]: チェックポイントが見つかりません。{checkpoint_path}新しいモデルで開始します。")
         # 以降は train_loss_history / test_loss_history を再初期化しない
+        self.model.eval()
 
         cood_manager = CoodManager(csv_path_dir=self.IMAGES_DIR)
         if test_mode:
-            cood_list = cood_manager.get_cood_list(self.test_dataset.get_image_paths())
+            image_path = self.test_dataset.get_image_paths()
+            cood_list = cood_manager.get_cood_list(image_path)
             orig_size_list = self.test_dataset.get_orig_size_list()
             test_bar = tqdm(self.test_loader, desc=f"[PredictImages] Epoch {epoch+1}/{num_epochs} [Train]")
         else:
-            cood_list = cood_manager.get_cood_list(self.train_dataset.get_image_paths())
+            image_path = self.train_dataset.get_image_paths()
+            cood_list = cood_manager.get_cood_list(image_path)
             orig_size_list = self.train_dataset.get_orig_size_list()
             test_bar = tqdm(self.train_loader, desc=f"[PredictImages] Epoch {epoch+1}/{num_epochs} [Train]")
 
@@ -189,21 +192,32 @@ class PredictImages:
                 file_ids = batch[2]
             elif len(batch) == 2:
                 imgs = batch[0]
-                resized_imgs100, (sy, sx) = self.resize_keep_aspect_to_width(imgs, target_w=100)
-                resized_imgs200, (sy, sx) = self.resize_keep_aspect_to_width(imgs, target_w=200)
+                if multi_scale:
+                    resized_imgs100, (sy, sx) = self.resize_keep_aspect_to_width(imgs, target_w=100)
+                    resized_imgs200, (sy, sx) = self.resize_keep_aspect_to_width(imgs, target_w=200)
                 masks = batch[1]
                 file_ids = None
             pred = self.model(imgs.to(self.device))
-            pred_100 = self.model(resized_imgs100.to(self.device))
-            pred_200 = self.model(resized_imgs200.to(self.device))
+            if multi_scale:
+                pred_100 = self.model(resized_imgs100.to(self.device))
+                pred_200 = self.model(resized_imgs200.to(self.device))
             cropped_imgs = self.crop_labels_to_match(imgs, pred)
             cropped_masks = self.crop_labels_to_match(masks, pred)
             image_list.append(cropped_imgs.cpu().detach()[0])
             teacher_heatmap_list.append(cropped_masks.cpu().detach()[0])
             pred_heatmap_list.append(pred.cpu().detach()[0])
-            pred_heatmap_list_100.append(pred_100.cpu().detach()[0])
-            pred_heatmap_list_200.append(pred_200.cpu().detach()[0])
-        return image_list, teacher_heatmap_list, pred_heatmap_list , cood_list, orig_size_list, pred_heatmap_list_100, pred_heatmap_list_200
+            if multi_scale:
+                pred_heatmap_list_100.append(pred_100.cpu().detach()[0])
+                pred_heatmap_list_200.append(pred_200.cpu().detach()[0])
+        self.image_list = image_list
+        self.teacher_heatmap_list = teacher_heatmap_list
+        self.pred_heatmap_list = pred_heatmap_list
+        self.cood_list = cood_list
+        self.orig_size_list = orig_size_list
+        self.pred_heatmap_list_100 = pred_heatmap_list_100
+        self.pred_heatmap_list_200 = pred_heatmap_list_200
+        self.image_path_list = image_path
+        # return image_list, teacher_heatmap_list, pred_heatmap_list , cood_list, orig_size_list, pred_heatmap_list_100, pred_heatmap_list_200, image_path
 
     def convert_boxes_to_orgsize(boxes, box_width, org_width, org_height):
         box_height = box_width * (org_height / org_width)
