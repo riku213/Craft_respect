@@ -58,7 +58,7 @@ class PredictImages:
         self.check_point_version = '1.1'
         self.checkpoint_dir = checkpoint_dir
         self.checkpoint_dir_finetuning = checkpoint_dir_finetuning
-        self.checkpoint_path = os.path.join(self.checkpoint_dir, f"latest_checkpoint_V{self.check_point_version}.pth")
+        self.checkpoint_path = os.path.join(self.checkpoint_dir, f"latest_checkpoint_v{self.check_point_version}.pth")
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = UNet(3, 4).to(self.device)
