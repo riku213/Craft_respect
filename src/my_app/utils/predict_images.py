@@ -147,7 +147,7 @@ class PredictImages:
         num_epochs = 1
 
         checkpoint_dir = Path(self.checkpoint_dir_finetuning)
-        check_point_version = '1.1'
+        check_point_version = '1.1.2'
         checkpoint_path = os.path.join(checkpoint_dir, f"latest_checkpoint_V{check_point_version}.pth")
 
         # チェックポイントの読み込み（存在する場合）
